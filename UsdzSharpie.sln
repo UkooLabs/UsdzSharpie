@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30028.174
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UsdzSharpie.Test", "UsdzSharpie.Test\UsdzSharpie.Test.csproj", "{1A8E0B2D-7C00-4874-BADA-4641FA14A36A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UsdzSharpie", "UsdzSharpie\UsdzSharpie.csproj", "{D71411C0-44E8-4DA7-9579-DD8467B77951}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1A8E0B2D-7C00-4874-BADA-4641FA14A36A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A8E0B2D-7C00-4874-BADA-4641FA14A36A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A8E0B2D-7C00-4874-BADA-4641FA14A36A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A8E0B2D-7C00-4874-BADA-4641FA14A36A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D71411C0-44E8-4DA7-9579-DD8467B77951}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D71411C0-44E8-4DA7-9579-DD8467B77951}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D71411C0-44E8-4DA7-9579-DD8467B77951}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D71411C0-44E8-4DA7-9579-DD8467B77951}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {BCA982F6-9DD7-4AEE-83BF-271C137DAAA9}
+	EndGlobalSection
+EndGlobal
