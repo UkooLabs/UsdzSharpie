@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Text;
 
 namespace UsdzSharpie
 {
@@ -22,7 +20,20 @@ namespace UsdzSharpie
             {
                 foreach (var entry in zipArchive.Entries)
                 {
-                    var a = entry.Name;
+                    if (Path.GetExtension(entry.Name).Equals(".usdc", StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        var usdcReader = new UsdcReader();
+                        {
+                            using (var entryStream = entry.Open())
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                entryStream.CopyTo(memoryStream);
+                                memoryStream.Position = 0;
+                                usdcReader.ReadUsdc(memoryStream);
+                            }
+                        }
+                    }
+                    
                 }
             }
         }

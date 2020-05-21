@@ -5,33 +5,6 @@ namespace UsdzSharpie.Tests
 {
     public class Tests
     {
-        public string SolutionPath => Helper.GetSolutionPath();
-
-        public string ExamplesPath => Path.Combine(SolutionPath, "Examples");
-
-        public string ReferencePath => Path.Combine(ExamplesPath, "Reference");
-
-        const string usdz1 = "BeoSound_2.usdz";
-        const string usdz2 = "chair_swan.usdz";
-        const string usdz3 = "crua_hybrid.usdz";
-        const string usdz4 = "CSC_Bag_Small.usdz";
-        const string usdz5 = "cup_saucer_set.usdz";
-        const string usdz6 = "fender_stratocaster.usdz";
-        const string usdz7 = "flower_tulip.usdz";
-        const string usdz8 = "gramophone.usdz";
-        const string usdz9 = "Huracan-EVO-RWD-Spyder-opt-22.usdz";
-        const string usdz10 = "pot_plant.usdz";
-        const string usdz11 = "t51-helmet.usdz";
-        const string usdz12 = "teapot.usdz";
-        const string usdz13 = "toy_biplane.usdz";
-        const string usdz14 = "toy_car.usdz";
-        const string usdz15 = "toy_drummer.usdz";
-        const string usdz16 = "toy_robot_vintage.usdz";
-        const string usdz17 = "trowel.usdz";
-        const string usdz18 = "tv_retro.usdz";
-        const string usdz19 = "wateringcan.usdz";
-        const string usdz20 = "wheelbarrow.usdz";
-
         [SetUp]
         public void Setup()
         {
@@ -42,7 +15,7 @@ namespace UsdzSharpie.Tests
         {
             var usdcReader = new UsdcReader();
             {
-                var usdcPath = Path.Combine(ReferencePath, "reference.usdc");
+                var usdcPath = Path.Combine(Helper.ReferencePath, "reference.usdc");
                 usdcReader.ReadUsdc(usdcPath);
             }
         }
@@ -52,7 +25,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz1);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample1);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -62,7 +35,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz2);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample2);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -72,7 +45,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz3);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample3);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -81,7 +54,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz4);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample4);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -91,7 +64,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz5);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample5);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -101,7 +74,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz6);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample6);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -111,7 +84,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz7);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample7);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -121,7 +94,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz8);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample8);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -131,7 +104,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz9);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample9);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -141,7 +114,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz10);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample10);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -152,7 +125,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz11);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample11);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -162,7 +135,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz12);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample12);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -172,7 +145,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz13);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample13);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -181,7 +154,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz14);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample14);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -191,7 +164,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz15);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample15);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -201,7 +174,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz16);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample16);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -211,7 +184,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz17);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample17);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -221,7 +194,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz18);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample18);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -231,7 +204,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz19);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample19);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
@@ -241,7 +214,7 @@ namespace UsdzSharpie.Tests
         {
             var usdzReader = new UsdzReader();
             {
-                var usdzPath = Path.Combine(ExamplesPath, usdz20);
+                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample20);
                 usdzReader.ReadUsdz(usdzPath);
             }
         }
