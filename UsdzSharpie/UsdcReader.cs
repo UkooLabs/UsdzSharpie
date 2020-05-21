@@ -1,6 +1,7 @@
 ﻿using K4os.Compression.LZ4;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -84,7 +85,6 @@ namespace UsdzSharpie
         private byte[] DecompressFromBuffer(byte[] compressedBuffer, ulong uncompressedSize)
         {
             var uncompressedBuffer = new byte[uncompressedSize];
-
             var chunks = compressedBuffer[0];
             if (chunks == 0)
             {
@@ -95,32 +95,24 @@ namespace UsdzSharpie
             }
             else
             {
-                //https://github.com/PixarAnimationStudios/USD/blob/be1a80f8cb91133ac75e1fc2a2e1832cd10d91c8/pxr/base/tf/fastCompression.cpp (line 111)
-
-                //size_t totalDecompressed = 0;
-                //for (int i = 0; i != nChunks; ++i)
-                //{
-                //    int32_t chunkSize = 0;
-                //    memcpy(&chunkSize, compressed, sizeof(chunkSize));
-                //    compressed += sizeof(chunkSize);
-                //    int nDecompressed = LZ4_decompress_safe(
-                //        compressed, output, chunkSize,
-                //        std::min<size_t>(LZ4_MAX_INPUT_SIZE, maxOutputSize));
-                //    if (nDecompressed < 0)
-                //    {
-                //        TF_RUNTIME_ERROR("Failed to decompress data, possibly corrupt? "
-        
-                //                         "LZ4 error code: %d", nDecompressed);
-                //        return 0;
-                //    }
-                //    compressed += chunkSize;
-                //    output += nDecompressed;
-                //    maxOutputSize -= nDecompressed;
-                //    totalDecompressed += nDecompressed;
-                //}
-                //return totalDecompressed;
-
-                throw new Exception("TODO not implemnted");
+                int offset = 1;
+                int totalDecompressed = 0;
+                for (var i = 0; i < chunks; i++)
+                {
+                    var chunkSize = BitConverter.ToInt32(compressedBuffer, offset);
+                    offset += sizeof(int);
+                    var decompressedSize = LZ4Codec.Decode(compressedBuffer, offset, chunkSize, uncompressedBuffer, totalDecompressed, (int)uncompressedSize);
+                    if (decompressedSize < 0)
+                    {
+                        throw new Exception("Unexpected decompressed chunk size");
+                    }
+                    offset += chunkSize;
+                    totalDecompressed += decompressedSize;
+                }
+                if (totalDecompressed != (int)uncompressedSize)
+                {
+                    throw new Exception("Unexpected decompressed total size");
+                }
             }
 
             return uncompressedBuffer;
