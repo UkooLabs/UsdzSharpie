@@ -12,11 +12,11 @@ namespace UsdzSharpie
 
         const string usdcHeader = "PXR-USDC";
 
-        public void ReadUSDC(string filename)
+        public void ReadUsdc(string filename)
         {
             using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read))
             {
-                ReadUSDC(stream);
+                ReadUsdc(stream);
             }
         }
 
@@ -168,7 +168,7 @@ namespace UsdzSharpie
             binaryReader.BaseStream.Position = (long)offset;
         }
 
-        public void ReadUSDC(Stream stream)
+        public void ReadUsdc(Stream stream)
         {
             using (var binaryReader = new BinaryReader(stream))
             {
