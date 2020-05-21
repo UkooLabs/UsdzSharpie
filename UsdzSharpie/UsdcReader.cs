@@ -1,7 +1,6 @@
 ﻿using K4os.Compression.LZ4;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,7 +9,6 @@ namespace UsdzSharpie
 {
     public class UsdcReader
     {
-
         const string usdcHeader = "PXR-USDC";
 
         public void ReadUsdc(string filename)
@@ -118,7 +116,27 @@ namespace UsdzSharpie
             return uncompressedBuffer;
         }
 
-        public void ReadTokens(BinaryReader binaryReader, ulong offset, ulong size)
+        private string[] SplitBufferIntoStrings(byte[] buffer)
+        {
+            var stringBuilder = new StringBuilder();
+            var result = new List<string>();
+            for (var i = 0; i < buffer.Length; i++)
+            {
+                if (buffer[i] == 0)
+                {
+                    if (stringBuilder.Length > 0)
+                    {
+                        result.Add(stringBuilder.ToString());
+                        stringBuilder.Clear();
+                    }
+                    continue;
+                }
+                stringBuilder.Append((char)buffer[i]);
+            }
+            return result.ToArray();
+        }
+
+        private string[] ReadTokens(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
 
@@ -132,30 +150,38 @@ namespace UsdzSharpie
 
             var compressedBuffer = ReadBytes(binaryReader, (int)compressedSize);
             var uncompressedBuffer = DecompressFromBuffer(compressedBuffer, uncompressedSize);
+
+            var tokens = SplitBufferIntoStrings(uncompressedBuffer);
+            if (tokens.Length != (int)tokenCount - 1)
+            {
+                throw new Exception("Unexpected token count");
+            }
+
+            return tokens;
         }
 
 
-        public void ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
+        private void ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
 
-        public void ReadFields(BinaryReader binaryReader, ulong offset, ulong size)
+        private void ReadFields(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
 
-        public void ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
+        private void ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
 
-        public void ReadPaths(BinaryReader binaryReader, ulong offset, ulong size)
+        private void ReadPaths(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
 
-        public void ReadSpecs(BinaryReader binaryReader, ulong offset, ulong size)
+        private void ReadSpecs(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
@@ -184,7 +210,7 @@ namespace UsdzSharpie
                 {
                     if (section.Token.Equals("TOKENS"))
                     {
-                        ReadTokens(binaryReader, section.Offset, section.Size);
+                        var tokens = ReadTokens(binaryReader, section.Offset, section.Size);
                     }
                     else if (section.Token.Equals("STRINGS"))
                     {
@@ -209,7 +235,5 @@ namespace UsdzSharpie
                 }
             }
         }
-
-
     }
 }
