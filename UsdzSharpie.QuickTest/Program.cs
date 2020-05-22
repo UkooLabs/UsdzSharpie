@@ -36,13 +36,13 @@ namespace UsdzSharpie.QuickTest
 
         static void Main(string[] args)
         {
-            TestAll();
+            //TestAll();
 
-            var usdcReader = new UsdcReader();
-            {
-                var usdcPath = Path.Combine(Helper.ReferencePath, "reference.usdc");
-                usdcReader.ReadUsdc(usdcPath);
-            }
+            //var usdcReader = new UsdcReader();
+            //{
+            //    var usdcPath = Path.Combine(Helper.ReferencePath, "reference.usdc");
+            //    usdcReader.ReadUsdc(usdcPath);
+            //}
 
             var usdzReader = new UsdzReader();
             {

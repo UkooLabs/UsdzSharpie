@@ -80,40 +80,58 @@ namespace UsdzSharpie
             return tocSections.ToArray();
         }
 
-        private byte[] DecompressFromBuffer(byte[] compressedBuffer, ulong uncompressedSize)
+        private void ProcessChunk(int totalChunks, int chunkSize, ref int offset, ref int totalDecompressed, byte[] compressedBuffer, byte[] uncompressedBuffer)
+        {
+            if (totalChunks != 0)
+            {
+                chunkSize = BitConverter.ToInt32(compressedBuffer, offset);
+                offset += sizeof(int);
+            }
+
+            var decompressedSize = LZ4Codec.Decode(compressedBuffer, offset, chunkSize, uncompressedBuffer, totalDecompressed, uncompressedBuffer.Length);
+            if (decompressedSize < 0)
+            {
+                throw new Exception("Unexpected decompressed chunk size");
+            }
+
+            offset += chunkSize;
+            totalDecompressed += decompressedSize;
+        }
+
+        private byte[] DecompressFromBuffer(byte[] compressedBuffer, ulong uncompressedSize, bool validateTotal)
         {
             var uncompressedBuffer = new byte[uncompressedSize];
             var chunks = compressedBuffer[0];
+
+            var chunkSize = compressedBuffer.Length - 1;
+
+            int offset = 1;
+            int totalDecompressed = 0;
             if (chunks == 0)
             {
-                if (LZ4Codec.Decode(compressedBuffer, 1, compressedBuffer.Length - 1, uncompressedBuffer, 0, (int)uncompressedSize) != (int)uncompressedSize)
-                {
-                    throw new Exception("Unexpected decompressed size");
-                }
+                ProcessChunk(chunks, chunkSize, ref offset, ref totalDecompressed, compressedBuffer, uncompressedBuffer);
             }
             else
             {
-                int offset = 1;
-                int totalDecompressed = 0;
                 for (var i = 0; i < chunks; i++)
                 {
-                    var chunkSize = BitConverter.ToInt32(compressedBuffer, offset);
-                    offset += sizeof(int);
-                    var decompressedSize = LZ4Codec.Decode(compressedBuffer, offset, chunkSize, uncompressedBuffer, totalDecompressed, (int)uncompressedSize);
-                    if (decompressedSize < 0)
-                    {
-                        throw new Exception("Unexpected decompressed chunk size");
-                    }
-                    offset += chunkSize;
-                    totalDecompressed += decompressedSize;
-                }
-                if (totalDecompressed != (int)uncompressedSize)
-                {
-                    throw new Exception("Unexpected decompressed total size");
+                    ProcessChunk(chunks, chunkSize, ref offset, ref totalDecompressed, compressedBuffer, uncompressedBuffer);
                 }
             }
 
-            return uncompressedBuffer;
+            if (totalDecompressed == (int)uncompressedSize)
+            {
+                return uncompressedBuffer;
+            }
+
+            if (validateTotal)
+            {
+                throw new Exception("Unexpected decompressed total size");
+            }
+
+            var result = new byte[totalDecompressed];
+            Array.Copy(uncompressedBuffer, result, totalDecompressed);
+            return result;
         }
 
         private string[] SplitBufferIntoStrings(byte[] buffer)
@@ -149,7 +167,7 @@ namespace UsdzSharpie
             }
 
             var compressedBuffer = ReadBytes(binaryReader, (int)compressedSize);
-            var uncompressedBuffer = DecompressFromBuffer(compressedBuffer, uncompressedSize);
+            var uncompressedBuffer = DecompressFromBuffer(compressedBuffer, uncompressedSize, true);
 
             var tokens = SplitBufferIntoStrings(uncompressedBuffer);
             if (tokens.Length != (int)tokenCount - 1)
@@ -161,14 +179,160 @@ namespace UsdzSharpie
         }
 
 
-        private void ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
+        private uint[] ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
+
+            var indexCount = binaryReader.ReadUInt64();
+            var result = new List<uint>();
+            for (var i = 0; i < (int)indexCount; i++)
+            {
+                result.Add(binaryReader.ReadUInt32());
+            }
+            return result.ToArray();
+        }
+
+        public const ulong LZ4_MAX_INPUT_SIZE = 0x7E000000;
+
+        public ulong GetMaxInputSize()
+        {
+            return 127 * LZ4_MAX_INPUT_SIZE;
+        }
+
+        public ulong LZ4_compressBound(ulong size)
+        {
+            return size > LZ4_MAX_INPUT_SIZE ? 0 : size + (size / 255) + 16;
+        }
+
+        public ulong GetCompressedBufferSize(ulong inputSize)
+        {
+            if (inputSize > GetMaxInputSize())
+            {
+                return 0;
+            }
+
+            if (inputSize <= LZ4_MAX_INPUT_SIZE)
+            {
+                return LZ4_compressBound(inputSize) + 1;
+            }
+            ulong nWholeChunks = inputSize / LZ4_MAX_INPUT_SIZE;
+            ulong partChunkSz = inputSize % LZ4_MAX_INPUT_SIZE;
+            ulong sz = 1 + nWholeChunks * (LZ4_compressBound(LZ4_MAX_INPUT_SIZE) + sizeof(int));
+            if (partChunkSz > 0)
+            {
+                sz += LZ4_compressBound(partChunkSz) + sizeof(int);
+            }
+            return sz;
+        }
+
+        public ulong GetEncodedBufferSize(ulong count)
+        {
+            return count > 0 ? (sizeof(int)) + ((count * 2 + 7) / 8) + (count * sizeof(int)) : 0;
+        }
+
+        public void DecodeHelper(int count, int common, byte[] codesIn, ref int codeInOffset, byte[] vintsIn,  ref int vintsOffset, ref int preVal, ref List<int> results)
+        {
+            var codeByte = codesIn[codeInOffset];
+            codeInOffset++;
+            for (var i = 0; i < count; i++)
+            {
+                var x = (codeByte & (3 << (2 * i))) >> (2 * i);
+                if (x == 0)
+                {
+                    preVal += common;
+                }
+                else if (x == 1)
+                {
+                    preVal += unchecked((sbyte)vintsIn[vintsOffset]);
+                    vintsOffset += 1;
+                }
+                else if (x == 2)
+                {
+                    preVal += BitConverter.ToInt16(vintsIn, vintsOffset);
+                    vintsOffset += 2;
+                }
+                else if (x == 4)
+                {
+                    preVal += BitConverter.ToInt32(vintsIn, vintsOffset);
+                    vintsOffset += 4;
+                }
+                results.Add(preVal);
+            }
+        }
+
+        public int[] DecodeIntegers(byte[] buffer, ulong count)
+        {
+            var commonValue = BitConverter.ToInt32(buffer, 0);
+            var numcodesBytes = (count * 2 + 7) / 8;
+
+            var codesIn = new byte[(int)numcodesBytes];
+            Array.Copy(buffer, 4, codesIn, 0, codesIn.Length);
+            var vintsIn = new byte[buffer.Length - (int)numcodesBytes - 4];
+            Array.Copy(buffer, 4 + codesIn.Length, vintsIn, 0, vintsIn.Length);
+
+            var vintsOffset = 0;
+            var codeInOffset = 0;
+
+            var results = new List<int>();
+
+            int preVal = 0;
+            int intsLeft = (int)count;
+            while (intsLeft > 0)
+            {
+                var toProcess = Math.Min(intsLeft, 4);
+                DecodeHelper(toProcess, commonValue, codesIn, ref codeInOffset, vintsIn, ref vintsOffset, ref preVal, ref results);
+                intsLeft -= toProcess;
+            }
+
+            return results.ToArray();
+        }
+
+        private string DebugString(int index,  ulong value)
+        {
+            var type = (value >> 48) & 0xff;
+            var isArray = (value & ((ulong)1 << 63)) > 0;
+            var isInlined = (value & ((ulong)1 << 62)) > 0;
+            var isCompressed = (value & ((ulong)1 << 61)) > 0;
+            var payload = (value & ((ulong)1 << 48) - 1);
+            return $"name = {tokens[index]}, ty: {type}, isArray: {isArray}, isInlined: {isInlined}, isCompressed: {isCompressed}, payload: {payload}";
         }
 
         private void ReadFields(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
+
+            var fieldCount = binaryReader.ReadUInt64();
+            var fieldSize = binaryReader.ReadUInt64();
+            
+            var compressedBuffer = binaryReader.ReadBytes((int)fieldSize);
+
+            var workSpaceSize = GetEncodedBufferSize(fieldCount);
+
+            var uncompressedBuffer = DecompressFromBuffer(compressedBuffer, workSpaceSize, false);
+            var results = DecodeIntegers(uncompressedBuffer, fieldCount);
+            if (results.Length != (int)fieldCount)
+            {
+                throw new Exception("Unexpected field count");
+            }
+
+            var repsSize = binaryReader.ReadUInt64();
+            var repBuffer = binaryReader.ReadBytes((int)repsSize);
+
+            var debug = new List<string>();
+
+            var repuncompressedBuffer = DecompressFromBuffer(repBuffer, fieldCount * 8, true);
+            for (var i = 0; i < (int)fieldCount; i++)
+            {
+                var index = results[i];
+                var repValue = BitConverter.ToUInt64(repuncompressedBuffer, i * 8);
+
+                var a = DebugString(index, repValue);
+                debug.Add(a);
+            }
+
+            var q = 1;
+
+
         }
 
         private void ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
@@ -185,6 +349,8 @@ namespace UsdzSharpie
         {
             binaryReader.BaseStream.Position = (long)offset;
         }
+
+        private string[] tokens;
 
         public void ReadUsdc(Stream stream)
         {
@@ -210,11 +376,11 @@ namespace UsdzSharpie
                 {
                     if (section.Token.Equals("TOKENS"))
                     {
-                        var tokens = ReadTokens(binaryReader, section.Offset, section.Size);
+                        tokens = ReadTokens(binaryReader, section.Offset, section.Size);
                     }
                     else if (section.Token.Equals("STRINGS"))
                     {
-                        ReadStrings(binaryReader, section.Offset, section.Size);
+                        var indices = ReadStrings(binaryReader, section.Offset, section.Size);
                     }
                     else if (section.Token.Equals("FIELDS"))
                     {
