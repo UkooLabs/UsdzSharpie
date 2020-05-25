@@ -6,7 +6,7 @@ namespace UsdzSharpie.Compression
 {
     public class IntegerDecoder
     {
-        private static void DecodeHelper(int count, int common, byte[] codesIn, ref int codeInOffset, byte[] vintsIn, ref int vintsOffset, ref int preVal, ref List<int> results)
+        private static void DecodeHelper(int count, int common, byte[] codesIn, ref int codeInOffset, byte[] vintsIn, ref int vintsOffset, ref int preVal, ref List<uint> results)
         {
             var codeByte = codesIn[codeInOffset];
             codeInOffset++;
@@ -32,11 +32,11 @@ namespace UsdzSharpie.Compression
                     preVal += BitConverter.ToInt32(vintsIn, vintsOffset);
                     vintsOffset += 4;
                 }
-                results.Add(preVal);
+                results.Add((uint)preVal);
             }
         }
 
-        public static int[] DecodeIntegers(byte[] buffer, ulong count)
+        public static uint[] DecodeIntegers(byte[] buffer, ulong count)
         {
             var commonValue = BitConverter.ToInt32(buffer, 0);
             var numcodesBytes = (count * 2 + 7) / 8;
@@ -49,7 +49,7 @@ namespace UsdzSharpie.Compression
             var vintsOffset = 0;
             var codeInOffset = 0;
 
-            var results = new List<int>();
+            var results = new List<uint>();
 
             int preVal = 0;
             int intsLeft = (int)count;

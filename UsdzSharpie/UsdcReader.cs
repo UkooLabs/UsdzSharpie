@@ -1,4 +1,5 @@
 ﻿using K4os.Compression.LZ4;
+using K4os.Compression.LZ4.Streams;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -81,11 +82,8 @@ namespace UsdzSharpie
             {
                 if (buffer[i] == 0)
                 {
-                    if (stringBuilder.Length > 0)
-                    {
-                        result.Add(stringBuilder.ToString());
-                        stringBuilder.Clear();
-                    }
+                    result.Add(stringBuilder.ToString());
+                    stringBuilder.Clear();
                     continue;
                 }
                 stringBuilder.Append((char)buffer[i]);
@@ -102,14 +100,14 @@ namespace UsdzSharpie
             var compressedSize = binaryReader.ReadUInt64();
             if (compressedSize + 24 != size)
             {
-                throw new Exception("Unexpected compressed size");
+                throw new Exception("Unexpected buffer size");
             }
 
             var compressedBuffer = ReadBytes(binaryReader, (int)compressedSize);
-            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, uncompressedSize, true);
+            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, uncompressedSize);
 
             var tokens = SplitBufferIntoStrings(uncompressedBuffer);
-            if (tokens.Length != (int)tokenCount - 1)
+            if (tokens.Length != (int)tokenCount)
             {
                 throw new Exception("Unexpected token count");
             }
@@ -117,52 +115,56 @@ namespace UsdzSharpie
             return tokens;
         }
 
-
-        private uint[] ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
+        private int[] ReadStrings(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
 
             var indexCount = binaryReader.ReadUInt64();
-            var result = new List<uint>();
+            if ((indexCount * 4) + 8 != size)
+            {
+                throw new Exception("Unexpected buffer size");
+            }
+
+            var result = new List<int>();
             for (var i = 0; i < (int)indexCount; i++)
             {
-                result.Add(binaryReader.ReadUInt32());
+                result.Add(binaryReader.ReadInt32());
             }
             return result.ToArray();
         }
 
-        //public const ulong LZ4_MAX_INPUT_SIZE = 0x7E000000;
+        public const ulong LZ4_MAX_INPUT_SIZE = 0x7E000000;
 
-        //public ulong GetMaxInputSize()
-        //{
-        //    return 127 * LZ4_MAX_INPUT_SIZE;
-        //}
+        public ulong GetMaxInputSize()
+        {
+            return 127 * LZ4_MAX_INPUT_SIZE;
+        }
 
-        //public ulong LZ4_compressBound(ulong size)
-        //{
-        //    return size > LZ4_MAX_INPUT_SIZE ? 0 : size + (size / 255) + 16;
-        //}
+        public ulong LZ4_compressBound(ulong size)
+        {
+            return size > LZ4_MAX_INPUT_SIZE ? 0 : size + (size / 255) + 16;
+        }
 
-        //public ulong GetCompressedBufferSize(ulong inputSize)
-        //{
-        //    if (inputSize > GetMaxInputSize())
-        //    {
-        //        return 0;
-        //    }
+        public ulong GetCompressedBufferSize(ulong inputSize)
+        {
+            if (inputSize > GetMaxInputSize())
+            {
+                return 0;
+            }
 
-        //    if (inputSize <= LZ4_MAX_INPUT_SIZE)
-        //    {
-        //        return LZ4_compressBound(inputSize) + 1;
-        //    }
-        //    ulong nWholeChunks = inputSize / LZ4_MAX_INPUT_SIZE;
-        //    ulong partChunkSz = inputSize % LZ4_MAX_INPUT_SIZE;
-        //    ulong sz = 1 + nWholeChunks * (LZ4_compressBound(LZ4_MAX_INPUT_SIZE) + sizeof(int));
-        //    if (partChunkSz > 0)
-        //    {
-        //        sz += LZ4_compressBound(partChunkSz) + sizeof(int);
-        //    }
-        //    return sz;
-        //}
+            if (inputSize <= LZ4_MAX_INPUT_SIZE)
+            {
+                return LZ4_compressBound(inputSize) + 1;
+            }
+            ulong nWholeChunks = inputSize / LZ4_MAX_INPUT_SIZE;
+            ulong partChunkSz = inputSize % LZ4_MAX_INPUT_SIZE;
+            ulong sz = 1 + nWholeChunks * (LZ4_compressBound(LZ4_MAX_INPUT_SIZE) + sizeof(int));
+            if (partChunkSz > 0)
+            {
+                sz += LZ4_compressBound(partChunkSz) + sizeof(int);
+            }
+            return sz;
+        }
 
         public ulong GetEncodedBufferSize(ulong count)
         {
@@ -179,7 +181,6 @@ namespace UsdzSharpie
             return $"name = {tokens[index]}, ty: {type}, isArray: {isArray}, isInlined: {isInlined}, isCompressed: {isCompressed}, payload: {payload}";
         }
 
-
         private UsdcField[] ReadFields(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
@@ -188,53 +189,125 @@ namespace UsdzSharpie
             var fieldSize = binaryReader.ReadUInt64();
             
             var compressedBuffer = binaryReader.ReadBytes((int)fieldSize);
-
-            var workSpaceSize = GetEncodedBufferSize(fieldCount);
-
-            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workSpaceSize, false);
-            var results = IntegerDecoder.DecodeIntegers(uncompressedBuffer, fieldCount);
-            if (results.Length != (int)fieldCount)
+            var workspaceSize = GetCompressedBufferSize(GetEncodedBufferSize(fieldCount));
+            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var indices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, fieldCount);
+            if (indices.Length != (int)fieldCount)
             {
                 throw new Exception("Unexpected field count");
             }
 
-            var repsSize = binaryReader.ReadUInt64();
-            var repBuffer = binaryReader.ReadBytes((int)repsSize);
-            var repuncompressedBuffer = Decompressor.DecompressFromBuffer(repBuffer, fieldCount * 8, true);
+            var flagSize = binaryReader.ReadUInt64();
+            compressedBuffer = binaryReader.ReadBytes((int)flagSize);
+            uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, fieldCount * 8);
 
+            var bufferOffset = 0;
             var fields = new List<UsdcField>();
             for (var i = 0; i < (int)fieldCount; i++)
             {
-                var index = results[i];
-                var flags = BitConverter.ToUInt64(repuncompressedBuffer, i * 8);
                 fields.Add(new UsdcField { 
-                    Index = index, 
-                    Flags = flags 
+                    Index = indices[i], 
+                    Flags = BitConverter.ToUInt64(uncompressedBuffer, bufferOffset)
                 });
+                bufferOffset += sizeof(ulong);
             }
             return fields.ToArray();
         }
 
-        private void ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
+        private uint[] ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
+
+            var fieldSetCount = binaryReader.ReadUInt64();
+            var fieldSetSize = binaryReader.ReadUInt64();
+
+            var compressedBuffer = binaryReader.ReadBytes((int)fieldSetSize);
+            var workspaceSize = GetEncodedBufferSize(fieldSetCount);
+            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var indices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, fieldSetCount);
+            if (indices.Length != (int)fieldSetCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
+
+            return indices;
         }
 
         private void ReadPaths(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
+
+            var pathCount = binaryReader.ReadUInt64();
+
+
+            var c = binaryReader.ReadUInt64();
+
+
+            var x = 1;
         }
 
-        private void ReadSpecs(BinaryReader binaryReader, ulong offset, ulong size)
+
+
+
+        private UsdcSpec[] ReadSpecs(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
+
+            var specCount = binaryReader.ReadUInt64(); //1661
+
+            var pathIndexSize = binaryReader.ReadUInt64(); //161
+
+            var compressedBuffer = binaryReader.ReadBytes((int)pathIndexSize);
+            var workspaceSize = GetEncodedBufferSize(specCount);
+            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var pathIndices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, specCount);
+            if (pathIndices.Length != (int)specCount)
+            {
+                throw new Exception("Unexpected field count");
+            }
+
+            var fieldsetIndexSize = binaryReader.ReadUInt64();
+            
+            compressedBuffer = binaryReader.ReadBytes((int)fieldsetIndexSize);
+            uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var fieldSetIndices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, specCount);
+            if (fieldSetIndices.Length != (int)specCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
+
+            var spectypeSize = binaryReader.ReadUInt64();
+
+            compressedBuffer = binaryReader.ReadBytes((int)spectypeSize);
+            uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var specTypes = IntegerDecoder.DecodeIntegers(uncompressedBuffer, specCount);
+            if (specTypes.Length != (int)specCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
+
+            var specs = new List<UsdcSpec>();
+            for (var i = 0; i < (int)specCount; i++)
+            {
+                specs.Add(new UsdcSpec
+                {
+                    PathIndex = pathIndices[i],
+                    FieldSetIndex = fieldSetIndices[i],
+                    SpecType = specTypes[i]
+                });
+            }
+            return specs.ToArray();
         }
 
         private string[] tokens;
 
-        private uint[] indices;
+        private int[] stringIdices;
 
         private UsdcField[] fields;
+
+        private uint[] fieldSetIndices;
+
+        private UsdcSpec[] specs;
 
         public void ReadUsdc(Stream stream)
         {
@@ -264,7 +337,7 @@ namespace UsdzSharpie
                     }
                     else if (section.Token.Equals("STRINGS"))
                     {
-                        indices = ReadStrings(binaryReader, section.Offset, section.Size);
+                        stringIdices = ReadStrings(binaryReader, section.Offset, section.Size);
                     }
                     else if (section.Token.Equals("FIELDS"))
                     {
@@ -272,7 +345,7 @@ namespace UsdzSharpie
                     }
                     else if (section.Token.Equals("FIELDSETS"))
                     {
-                        ReadFieldSets(binaryReader, section.Offset, section.Size);
+                        fieldSetIndices = ReadFieldSets(binaryReader, section.Offset, section.Size);
                     }
                     else if (section.Token.Equals("PATHS"))
                     {
@@ -280,7 +353,7 @@ namespace UsdzSharpie
                     }
                     else if (section.Token.Equals("SPECS"))
                     {
-                        ReadSpecs(binaryReader, section.Offset, section.Size);
+                        specs = ReadSpecs(binaryReader, section.Offset, section.Size);
                     }
                 }
             }

@@ -44,6 +44,12 @@ namespace UsdzSharpie.QuickTest
             //    usdcReader.ReadUsdc(usdcPath);
             //}
 
+            //var usdcReader = new UsdcReader();
+            //{
+            //    var usdzPath = Path.Combine(Helper.ExamplesPath, "exampleevo.usdc");
+            //    usdcReader.ReadUsdc(usdzPath);
+            //}
+
             var usdzReader = new UsdzReader();
             {
                 var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample9);

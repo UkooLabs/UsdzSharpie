@@ -2,7 +2,7 @@
 {
     public struct UsdcField
     {
-        public int Index;
+        public uint Index;
         public ulong Flags;
     }
 }

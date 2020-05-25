@@ -25,11 +25,11 @@ namespace UsdzSharpie.Compression
             chunkInfo.TotalDecompressed += decompressedSize;
         }
 
-        public static byte[] DecompressFromBuffer(byte[] compressedBuffer, ulong uncompressedSize, bool validateTotal)
+        public static byte[] DecompressFromBuffer(byte[] compressedBuffer, ulong workspaceSize)
         {
-            var uncompressedBuffer = new byte[uncompressedSize];
+            var workspaceBuffer = new byte[workspaceSize];
 
-            var chunkInfo = new ChunkInfo(compressedBuffer[0], compressedBuffer.Length - 1, compressedBuffer, uncompressedBuffer, 1);
+            var chunkInfo = new ChunkInfo(compressedBuffer[0], compressedBuffer.Length - 1, compressedBuffer, workspaceBuffer, 1);
             if (chunkInfo.Count == 0)
             {
                 ProcessChunk(ref chunkInfo);
@@ -42,18 +42,13 @@ namespace UsdzSharpie.Compression
                 }
             }
 
-            if (chunkInfo.TotalDecompressed == (int)uncompressedSize)
+            if (chunkInfo.TotalDecompressed == (int)workspaceSize)
             {
-                return uncompressedBuffer;
-            }
-
-            if (validateTotal)
-            {
-                throw new Exception("Unexpected decompressed total size");
+                return workspaceBuffer;
             }
 
             var result = new byte[chunkInfo.TotalDecompressed];
-            Array.Copy(uncompressedBuffer, result, chunkInfo.TotalDecompressed);
+            Array.Copy(workspaceBuffer, result, chunkInfo.TotalDecompressed);
             return result;
         }
     }
