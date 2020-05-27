@@ -235,8 +235,8 @@ namespace UsdzSharpie
 
         private void BuildDecompressedPaths(int[] pathIndices, int[] elementTokenIndices, int[] jumpIndices, int currentIndex, UsdcPath parentPath, ref UsdcPath[] paths)
         {
-            bool hasChild = false;
-            bool hasSibling = false;
+            var hasChild = false;
+            var hasSibling = false;
 
             do
             {
@@ -294,8 +294,8 @@ namespace UsdzSharpie
 
         private void BuildNodeHierarchy(int[] pathIndices, int[] elementTokenIndices, int[] jumpIndices, int currentIndex, int parentNodeIndex, ref UsdcNode[] nodes, ref UsdcPath[] paths)
         {
-            bool hasChild = false;
-            bool hasSibling = false;
+            var hasChild = false;
+            var hasSibling = false;
 
             // NOTE: Need to indirectly lookup index through pathIndexes[] when accessing `_nodes`
             do
@@ -477,12 +477,19 @@ namespace UsdzSharpie
                     throw new Exception("Unrecognised header");
                 }
 
+                for (var i = 0; i < header.Length; i++)
+                {
+                    Logger.LogLine($"{(byte)header[i]}");
+                }
+
                 // Read version info
                 var version = ReadVersion(binaryReader);
                 if (version.Major == 0 && version.Minor < 4)
                 {
                     throw new Exception("Version should be at least 0.4.0");
                 }
+
+                Logger.LogLine($"version = {version.Major}.{version.Minor}.{version.Patch}");
                 
                 // Read toc sections
                 var tocSections = ReadTocSections(binaryReader);
