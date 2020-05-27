@@ -2,8 +2,8 @@
 {
     public struct UsdcSpec
     {
-        public uint PathIndex;
-        public uint FieldSetIndex;
-        public uint SpecType;
+        public int PathIndex;
+        public int FieldSetIndex;
+        public int SpecType;
     }
 }

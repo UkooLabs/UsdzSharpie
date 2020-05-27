@@ -214,7 +214,7 @@ namespace UsdzSharpie
             return fields.ToArray();
         }
 
-        private uint[] ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
+        private int[] ReadFieldSets(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
 
@@ -233,15 +233,172 @@ namespace UsdzSharpie
             return indices;
         }
 
+        private void BuildDecompressedPaths(int[] pathIndices, int[] elementTokenIndices, int[] jumpIndices, int currentIndex, UsdcPath parentPath, ref UsdcPath[] paths)
+        {
+            bool hasChild = false;
+            bool hasSibling = false;
+
+            do
+            {
+                var thisIndex = currentIndex++;
+                if (parentPath.IsEmpty)
+                {
+                    // root node.
+                    // Assume single root node in the scene.
+                    parentPath = UsdcPath.AbsoluteRootPath();
+                    paths[pathIndices[thisIndex]] = parentPath;
+                }
+                else
+                {
+                    var tokenIndex = elementTokenIndices[thisIndex];
+                    var isPrimPropertyPath = tokenIndex < 0;
+                    tokenIndex = Math.Abs(tokenIndex);
+
+                    if (tokenIndex >= tokens.Length)
+                    {
+                        throw new Exception("Unexpected token index");
+                    }
+                    var elemToken = tokens[tokenIndex];
+
+                    // full path
+                    paths[pathIndices[thisIndex]] = isPrimPropertyPath ? parentPath.AppendProperty(elemToken) : parentPath.AppendElement(elemToken);
+
+                    // also set local path for 'primChildren' check
+                    paths[pathIndices[thisIndex]].SetLocalPath(new UsdcPath(elemToken));
+                }
+
+                // If we have either a child or a sibling but not both, then just
+                // continue to the neighbor.  If we have both then spawn a task for the
+                // sibling and do the child ourself.  We think that our path trees tend
+                // to be broader more often than deep.
+
+                hasChild = (jumpIndices[thisIndex] > 0) || (jumpIndices[thisIndex] == -1);
+                hasSibling = (jumpIndices[thisIndex] >= 0);
+
+                if (hasChild)
+                {
+                    if (hasSibling)
+                    {
+                        // NOTE(syoyo): This recursive call can be parallelized
+                        var siblingIndex = thisIndex + jumpIndices[thisIndex];
+                        BuildDecompressedPaths(pathIndices, elementTokenIndices, jumpIndices, siblingIndex, parentPath, ref paths);
+                    }
+                    // Have a child (may have also had a sibling). Reset parent path.
+                    parentPath = paths[pathIndices[thisIndex]];
+                }
+                // If we had only a sibling, we just continue since the parent path is
+                // unchanged and the next thing in the reader stream is the sibling's
+                // header.
+            } while (hasChild || hasSibling);
+        }
+
+        private void BuildNodeHierarchy(int[] pathIndices, int[] elementTokenIndices, int[] jumpIndices, int currentIndex, int parentNodeIndex, ref UsdcNode[] nodes, ref UsdcPath[] paths)
+        {
+            bool hasChild = false;
+            bool hasSibling = false;
+
+            // NOTE: Need to indirectly lookup index through pathIndexes[] when accessing `_nodes`
+            do
+            {
+                var thisIndex = currentIndex++;
+                if (parentNodeIndex == -1)
+                {
+                    // root node.
+                    // Assume single root node in the scene.
+                    if (thisIndex != 0)
+                    {
+                        throw new Exception("Unexpected index");
+                    }
+
+                    var root = new UsdcNode(parentNodeIndex, paths[pathIndices[thisIndex]]);
+
+                    nodes[pathIndices[thisIndex]] = root;
+
+                    parentNodeIndex = thisIndex;
+
+                }
+                else
+                {
+                    if (parentNodeIndex >= nodes.Length)
+                    {
+                        throw new Exception("Unexpected node index");
+                    }
+
+                    var node = new UsdcNode(parentNodeIndex, paths[pathIndices[thisIndex]]);
+
+                    nodes[pathIndices[thisIndex]] = node;
+
+                    var name = paths[pathIndices[thisIndex]].local_path_name();
+                    nodes[pathIndices[parentNodeIndex]].AddChildren(name, pathIndices[thisIndex]);
+                }
+
+                hasChild = (jumpIndices[thisIndex] > 0) || (jumpIndices[thisIndex] == -1);
+                hasSibling = (jumpIndices[thisIndex] >= 0);
+
+                if (hasChild)
+                {
+                    if (hasSibling)
+                    {
+                        var siblingIndex = thisIndex + jumpIndices[thisIndex];
+                        BuildNodeHierarchy(pathIndices, elementTokenIndices, jumpIndices, siblingIndex, parentNodeIndex, ref nodes, ref paths);              
+                    }
+                    // Have a child (may have also had a sibling). Reset parent node index
+                    parentNodeIndex = thisIndex;
+                }
+                // If we had only a sibling, we just continue since the parent path is
+                // unchanged and the next thing in the reader stream is the sibling's
+                // header.
+            } while (hasChild || hasSibling);
+
+        }
+
         private void ReadPaths(BinaryReader binaryReader, ulong offset, ulong size)
         {
             binaryReader.BaseStream.Position = (long)offset;
 
             var pathCount = binaryReader.ReadUInt64();
+            if (pathCount != binaryReader.ReadUInt64())
+            {
+                throw new Exception("Unexpected path count");
+            }
 
+            var pathIndexSize = binaryReader.ReadUInt64();
 
-            var c = binaryReader.ReadUInt64();
+            var compressedBuffer = binaryReader.ReadBytes((int)pathIndexSize);
+            var workspaceSize = GetEncodedBufferSize(pathCount);
+            var uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var pathIndices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, pathCount);
+            if (pathIndices.Length != (int)pathCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
 
+            var elementTokenIndexSize = binaryReader.ReadUInt64();
+            compressedBuffer = binaryReader.ReadBytes((int)elementTokenIndexSize);
+            workspaceSize = GetEncodedBufferSize(pathCount);
+            uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var elementTokenIndices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, pathCount);
+            if (elementTokenIndices.Length != (int)pathCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
+
+            var jumpSize = binaryReader.ReadUInt64();
+            compressedBuffer = binaryReader.ReadBytes((int)jumpSize);
+            workspaceSize = GetEncodedBufferSize(pathCount);
+            uncompressedBuffer = Decompressor.DecompressFromBuffer(compressedBuffer, workspaceSize);
+            var jumpIndices = IntegerDecoder.DecodeIntegers(uncompressedBuffer, pathCount);
+            if (jumpIndices.Length != (int)pathCount)
+            {
+                throw new Exception("Unexpected field set count");
+            }
+
+            var paths = new UsdcPath[pathCount];
+
+            BuildDecompressedPaths(pathIndices, elementTokenIndices, jumpIndices, 0, new UsdcPath(), ref paths);
+
+            var nodes = new UsdcNode[pathCount];
+            BuildNodeHierarchy(pathIndices, elementTokenIndices, jumpIndices, 0, -1, ref nodes, ref paths);
 
             var x = 1;
         }
@@ -305,7 +462,7 @@ namespace UsdzSharpie
 
         private UsdcField[] fields;
 
-        private uint[] fieldSetIndices;
+        private int[] fieldSetIndices;
 
         private UsdcSpec[] specs;
 
