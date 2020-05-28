@@ -55,6 +55,9 @@ namespace UsdzSharpie.QuickTest
                 var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample9);
                 usdzReader.ReadUsdz(usdzPath);
             }
+
+            Console.WriteLine("Done, press Enter to close.");
+            Console.ReadLine();
         }
     }
 }

@@ -7,9 +7,9 @@ namespace UsdzSharpie
 {
     public class UsdcPath
     {
-        private string prim_part; // full path
-        private string prop_part; // full path
-        private string local_part;
+        private string prim_part =  string.Empty; // full path
+        private string prop_part = string.Empty; // full path
+        private string local_part = string.Empty;
         private bool valid = false;
 
         public bool IsValid => valid;
@@ -31,6 +31,14 @@ namespace UsdzSharpie
             prim_part = prim;
             local_part = prim;
             valid = true;
+        }
+
+        public UsdcPath(UsdcPath path)
+        {
+            prim_part = path.prim_part;
+            prop_part = path.prop_part;
+            local_part = path.local_part;
+            valid = path.valid;
         }
 
         public string full_path_name()
@@ -70,7 +78,7 @@ namespace UsdzSharpie
 
         public UsdcPath AppendProperty(string elem)
         {
-            UsdcPath path = this;
+            var path = new UsdcPath(this);
 
             if (string.IsNullOrEmpty(elem))
             {
@@ -106,7 +114,7 @@ namespace UsdzSharpie
 
         public UsdcPath AppendElement(string elem)
         {
-            UsdcPath path = this;
+            var path = new UsdcPath(this);
 
             if (string.IsNullOrEmpty(elem))
             {
