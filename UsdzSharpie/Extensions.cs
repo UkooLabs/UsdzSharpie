@@ -28,5 +28,15 @@ namespace UsdzSharpie
         {
             return Unsafe.As<ulong, float>(ref value);
         }
+
+        public static string ToCoutFormat(this float value)
+        {
+            return Math.Round(value, 6).ToString("0.######");
+        }
+
+        public static string ToCoutFormat(this double value)
+        {
+            return Math.Round(value, 6).ToString("0.######");
+        }
     }
 }

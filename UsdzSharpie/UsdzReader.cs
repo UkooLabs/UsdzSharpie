@@ -22,7 +22,7 @@ namespace UsdzSharpie
 
                 foreach (var entry in zipArchive.Entries)
                 {
-                    if (Path.GetExtension(entry.Name).Equals(".usdc", StringComparison.CurrentCultureIgnoreCase))
+                    if (Path.GetExtension(entry.FullName).Equals(".usdc", StringComparison.CurrentCultureIgnoreCase))
                     {
                         var usdcReader = new UsdcReader();
                         {
@@ -59,7 +59,7 @@ namespace UsdzSharpie
                 ZipArchiveEntry entry = zipArchive.Entries[i];
                 using (var entryStream = entry.Open())
                 {
-                    Logger.LogLine($"[{i}] {entry.Name} : byte range ({stream.Position}, {stream.Position + entry.Length})");
+                    Logger.LogLine($"[{i}] {entry.FullName} : byte range ({stream.Position}, {stream.Position + entry.Length})");
                 }
             }
         }

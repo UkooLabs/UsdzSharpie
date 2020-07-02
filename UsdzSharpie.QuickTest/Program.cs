@@ -36,6 +36,12 @@ namespace UsdzSharpie.QuickTest
 
         static void Main(string[] args)
         {
+            var file = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample9);
+            if (args.Length == 1)
+            {
+                file = args[0];
+            }
+
             //TestAll();
 
             //var usdcReader = new UsdcReader();
@@ -50,14 +56,22 @@ namespace UsdzSharpie.QuickTest
             //    usdcReader.ReadUsdc(usdzPath);
             //}
 
-            var usdzReader = new UsdzReader();
+            var logFile = Path.Combine(Helper.SolutionPath, "usdzsharpie.txt");
+            if (File.Exists(logFile))
             {
-                var usdzPath = Path.Combine(Helper.ExamplesPath, Helper.UsdzExample9);
-                usdzReader.ReadUsdz(usdzPath);
+                File.Delete(logFile);
             }
 
-            Console.WriteLine("Done, press Enter to close.");
-            Console.ReadLine();
+            Logger.LogFile = new StreamWriter(logFile);
+            var usdzReader = new UsdzReader();
+            {
+                var usdzPath = Path.GetFullPath(file);
+                usdzReader.ReadUsdz(usdzPath);
+            }
+            Logger.LogFile.Close();
+
+            //Console.WriteLine("Done, press Enter to close.");
+            //Console.ReadLine();
         }
     }
 }

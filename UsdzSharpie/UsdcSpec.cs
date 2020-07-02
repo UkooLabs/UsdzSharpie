@@ -4,6 +4,6 @@
     {
         public int PathIndex;
         public int FieldSetIndex;
-        public int SpecType;
+        public UsdcField.SpecType SpecType;
     }
 }

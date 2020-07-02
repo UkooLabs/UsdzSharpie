@@ -99,7 +99,7 @@ namespace UsdzSharpie
                 {
                     var value = stringBuilder.ToString();
 
-                    Logger.LogLine($"token[{i}] = {value}");
+                    Logger.LogLine($"token[{result.Count}] = {value}");
 
                     result.Add(value);
                     stringBuilder.Clear();
@@ -112,7 +112,7 @@ namespace UsdzSharpie
 
         private string[] ReadTokens(BinaryReader binaryReader, ulong offset, ulong size)
         {
-            Logger.LogLine($"s.start = {offset}");
+            Logger.LogLine($"sec.start = {offset}");
 
             binaryReader.BaseStream.Position = (long)offset;
 
@@ -206,8 +206,8 @@ namespace UsdzSharpie
             var fieldCount = binaryReader.ReadUInt64();
             var fieldSize = binaryReader.ReadUInt64();
 
-            Logger.LogLine($"fields_size = {fieldSize}, tmp.size = {fieldCount}, num_fieds = {fieldCount}");
-            Logger.LogLine($"num_fieds = {fieldCount}");
+            Logger.LogLine($"fields_size = {fieldSize}, tmp.size = {fieldCount}, num_fields = {fieldCount}");
+            Logger.LogLine($"num_fields = {fieldCount}");
 
             var compressedBuffer = binaryReader.ReadBytes((int)fieldSize);
             var workspaceSize = GetCompressedBufferSize(GetEncodedBufferSize(fieldCount));
@@ -232,7 +232,7 @@ namespace UsdzSharpie
                     Flags = BitConverter.ToUInt64(uncompressedBuffer, bufferOffset)
                 };
 
-                Logger.LogLine($"field[{i}] name = {field.Name}, value = ty: {field.Type}, isArray: {field.IsArray.ToInt()}, isInlined: {field.IsInlined.ToInt()}, isCompressed: {field.IsCompressed.ToInt()}, payload: {field.Payload}");
+                Logger.LogLine($"field[{i}] name = {field.Name}, value = ty: {(int)field.Type}, isArray: {field.IsArray.ToInt()}, isInlined: {field.IsInlined.ToInt()}, isCompressed: {field.IsCompressed.ToInt()}, payload: {field.Payload}");
 
                 fields.Add(field);
                 bufferOffset += sizeof(ulong);
@@ -461,7 +461,7 @@ namespace UsdzSharpie
 
             for (var i = 0; i < pathIndices.Length; i++)
             {
-                Logger.LogLine($"pathIndexes[i] = {pathIndices[i]}");
+                Logger.LogLine($"pathIndexes[{i}] = {pathIndices[i]}");
             }
 
             for (var i = 0; i < elementTokenIndices.Length; i++)
@@ -539,17 +539,17 @@ namespace UsdzSharpie
                 {
                     PathIndex = pathIndices[i],
                     FieldSetIndex = fieldSetIndices[i],
-                    SpecType = specTypes[i]
+                    SpecType = ((ulong)specTypes[i]).ToEnum<UsdcField.SpecType>()
                 };
 
-                Logger.LogLine($"spec[{i}].pathIndex  = {spec.PathIndex}, fieldset_index = {spec.FieldSetIndex}, spec_type = {spec.SpecType}");
-                if (spec.FieldSetIndex >= fields.Length)
+                Logger.LogLine($"spec[{i}].pathIndex  = {spec.PathIndex}, fieldset_index = {spec.FieldSetIndex}, spec_type = {(int)spec.SpecType}");
+                if (i >= fieldSetIndices.Length)
                 {
                     Logger.LogLine($"spec[{i}] string_repr = #INVALID spec index#");
                 }
                 else
                 {
-                    Logger.LogLine($"spec[{i}] string_repr = [Spec] path: {paths[spec.PathIndex]}, fieldset id: {spec.FieldSetIndex} spec_type: SpecTypePseudoRoot");
+                    Logger.LogLine($"spec[{i}] string_repr = [Spec] path: {paths[spec.PathIndex].full_path_name()}, fieldset id: {spec.FieldSetIndex}, spec_type: {spec.SpecType}");
                 }
                 specs.Add(spec);
             }
@@ -620,6 +620,9 @@ namespace UsdzSharpie
 
         private object UnpackInlined(UsdcField field)
         {
+            Logger.LogLine($"d = {field.Payload}");
+            Logger.LogLine($"ty.id = {(ulong)field.Type}");
+
             if (field.Type == UsdcField.ValueTypeId.ValueTypeBool)
             {
                 if (field.IsCompressed)
@@ -770,7 +773,7 @@ namespace UsdzSharpie
 
                 var floatValue = field.Payload.UnpackFloat32();
 
-                Logger.LogLine($"value.float = {floatValue}");
+                Logger.LogLine($"value.float = {floatValue.ToCoutFormat()}");
 
                 //value->SetFloat(floatValue);
 
@@ -790,7 +793,7 @@ namespace UsdzSharpie
 
                 var doubleValue = (double)field.Payload.UnpackFloat32();
 
-                Logger.LogLine($"value.double = {doubleValue}");
+                Logger.LogLine($"value.double = {doubleValue.ToCoutFormat()}");
 
                 //value->SetDouble(doubleValue);
 
@@ -834,7 +837,7 @@ namespace UsdzSharpie
                 var y = (float)((field.Payload >> 8) & 0xff);
                 var z = (float)((field.Payload >> 16) & 0xff);
 
-                Logger.LogLine($"value.vec3f = {x}, {y}, {z}");
+                Logger.LogLine($"value.vec3f = {x.ToCoutFormat()}, {y.ToCoutFormat()}, {z.ToCoutFormat()}");
 
                 //value->SetVec3f(x, y, z);
 
@@ -855,7 +858,7 @@ namespace UsdzSharpie
                 var m00 = (double)(field.Payload & 0xff);
                 var m11 = (double)((field.Payload >> 8) & 0xff);
 
-                Logger.LogLine($"value.matrix(diag) = {m00}, {m11}");
+                Logger.LogLine($"value.matrix(diag) = {m00.ToCoutFormat()}, {m11.ToCoutFormat()}");
 
                 //value->SetMatrix2d(m00, m11);
 
@@ -877,7 +880,7 @@ namespace UsdzSharpie
                 var m11 = (double)((field.Payload >> 8) & 0xff);
                 var m22 = (double)((field.Payload >> 16) & 0xff);
 
-                Logger.LogLine($"value.matrix(diag) = {m00}, {m11}, {m22}");
+                Logger.LogLine($"value.matrix(diag) = {m00.ToCoutFormat()}, {m11.ToCoutFormat()}, {m22.ToCoutFormat()}");
 
                 //value->SetMatrix3d(m00, m11, m22);
 
@@ -900,7 +903,7 @@ namespace UsdzSharpie
                 var m22 = (double)((field.Payload >> 16) & 0xff);
                 var m33 = (double)((field.Payload >> 24) & 0xff);
 
-                Logger.LogLine($"value.matrix(diag) = {m00}, {m11}, {m22}, {m33}");
+                Logger.LogLine($"value.matrix(diag) = {m00.ToCoutFormat()}, {m11.ToCoutFormat()}, {m22.ToCoutFormat()}, {m33.ToCoutFormat()}");
 
                 //value->SetMatrix3d(m00, m11, m22);
 
@@ -1309,7 +1312,7 @@ namespace UsdzSharpie
                         var x = binaryReader.ReadSingle();
                         var y = binaryReader.ReadSingle();
                         var z = binaryReader.ReadSingle();
-                        Logger.LogLine($"Vec3f[{i}] = {x}, {y}, {z}");
+                        Logger.LogLine($"Vec3f[{i}] = {x.ToCoutFormat()}, {y.ToCoutFormat()}, {z.ToCoutFormat()}");
                     }
 
                     //value->SetVec2fArray(v.data(), v.size());
@@ -1319,7 +1322,7 @@ namespace UsdzSharpie
                     var x = binaryReader.ReadSingle();
                     var y = binaryReader.ReadSingle();
                     var z = binaryReader.ReadSingle();
-                    Logger.LogLine($"Vec3f = {x}, {y}, {z}");
+                    Logger.LogLine($"Vec3f = {x.ToCoutFormat()}, {y.ToCoutFormat()}, {z.ToCoutFormat()}");
 
                     //value->SetVec3f(v);
                 }
@@ -1342,7 +1345,7 @@ namespace UsdzSharpie
                         var y = binaryReader.ReadSingle();
                         var z = binaryReader.ReadSingle();
                         var w = binaryReader.ReadSingle();
-                        Logger.LogLine($"Vec4f[{i}] = {x}, {y}, {z}, {w}");
+                        Logger.LogLine($"Vec4f[{i}] = {x.ToCoutFormat()}, {y.ToCoutFormat()}, {z.ToCoutFormat()}, {w.ToCoutFormat()}");
                     }
 
                     //value->SetVec2fArray(v.data(), v.size());
@@ -1353,7 +1356,7 @@ namespace UsdzSharpie
                     var y = binaryReader.ReadSingle();
                     var z = binaryReader.ReadSingle();
                     var w = binaryReader.ReadSingle();
-                    Logger.LogLine($"Vec3f = {x}, {y}, {z}, {w}");
+                    Logger.LogLine($"Vec3f = {x.ToCoutFormat()}, {y.ToCoutFormat()}, {z.ToCoutFormat()}, {w.ToCoutFormat()}");
 
                     //value->SetVec4f(v);
                 }
@@ -1370,10 +1373,21 @@ namespace UsdzSharpie
                 var count = binaryReader.ReadUInt64();
                 Logger.LogLine($"n = {count}");
 
+                var indices = new List<int>();
                 for (var i = 0; i < (int)count; i++)
                 {
                     var index = binaryReader.ReadInt32();
+                    indices.Add(index);
                     Logger.LogLine($"tokenIndex[{i}] = {index}");
+                }
+
+                var tokenResult = new List<string>();
+                for (var i = 0; i < indices.Count; i++)
+                {
+                    var tokenIndex = indices[i];
+                    var token = tokens[tokenIndex];
+                    tokenResult.Add(token);
+                    Logger.LogLine($"tokenVector[{i}] = {token}, ({tokenIndex})");
                 }
 
                 //value->SetTokenArray(tokens);
@@ -1407,7 +1421,7 @@ namespace UsdzSharpie
                 var values = ReadFloatArray(binaryReader, field.IsCompressed);
                 for (var i = 0; i < values.Length; i++)
                 {
-                    Logger.LogLine($"Float[{i}] = {values[i]}");
+                    Logger.LogLine($"Float[{i}] = {values[i].ToCoutFormat()}");
                 }
 
                 return null;
@@ -1423,7 +1437,7 @@ namespace UsdzSharpie
                 var values = ReadDoubleArray(binaryReader, field.IsCompressed);
                 for (var i = 0; i < values.Length; i++)
                 {
-                    Logger.LogLine($"Double[{i}] = {values[i]}");
+                    Logger.LogLine($"Double[{i}] = {values[i].ToCoutFormat()}");
                 }
 
                 return null;
@@ -1486,38 +1500,114 @@ namespace UsdzSharpie
         {
             Logger.LogLine($"type_id = {(ulong)field.Type}");
             Logger.LogLine($"type_id = {(ulong)field.Type}");
-            Logger.LogLine($"ValueType:  {field.Type.ToString().Substring(9)}{{{(ulong)field.Type}}}, supports_array = {SupportsArray(field.Type).ToInt()}");
-            Logger.LogLine($"d = {field.Payload}");
-            Logger.LogLine($"ty.id = {(ulong)field.Type}");
+            Logger.LogLine($"ValueType: {field.Type.ToString().Substring(9)}({(ulong)field.Type}), supports_array = {SupportsArray(field.Type).ToInt()}");
 
             return field.IsInlined ? UnpackInlined(field) :UnpackNotInlined(binaryReader, field);                    
         }
 
+
+        public class FieldValuePair
+        {
+            public string Name { get; set; }
+            public object Value { get; set; }
+        }
+
+        public class LiveFieldSet
+        {
+            public int Index { get; set; }
+
+            public List<FieldValuePair> FieldValuePairs { get; set; } = new List<FieldValuePair>();
+        }
+
+
         private void BuildLiveFieldSets(BinaryReader binaryReader)
         {
-            var count = 0;
+            var liveFieldSets = new List<LiveFieldSet>();
+
+            var start = 0;
             for (var i = 0; i < fieldSetIndices.Length; i ++)
-            {
-                count++;
+            {                
                 if (fieldSetIndices[i] < 0)
                 {
-                    var range = count - 1;
+                    var count = i - start;
 
-                    Logger.LogLine($"range size = {range}");
+                    Logger.LogLine($"range size = {count}");
 
-                    for (var j = i - range; j < i; j++)
+                    var liveFieldSet = new LiveFieldSet
+                    {
+                        Index = start
+                    };
+
+                    for (var j = start; j < start + count; j++)
                     {
                         Logger.LogLine($"fieldIndex = {fieldSetIndices[j]}");
 
                         var field = fields[fieldSetIndices[j]];
                         var first = field.Name;
                         var second = UnpackField(binaryReader, field);
-                       
+
+                        var fieldValuePair = new FieldValuePair
+                        {
+                            Name = first,
+                            Value = second
+                        };
+                        liveFieldSet.FieldValuePairs.Add(fieldValuePair);
                     }
 
-                    count = 0;
+                    liveFieldSets.Add(liveFieldSet);
+
+
+                    start = i + 1;
+          
                 }
             }
+
+            Logger.LogLine($"# of live fieldsets = {liveFieldSets.Count}");
+
+            var sum = 0;
+            for (var i = 0; i < liveFieldSets.Count; i++)
+            {
+                Logger.LogLine($"livefieldsets[{liveFieldSets[i]}].count = {liveFieldSets[i].FieldValuePairs.Count}");
+
+                sum += liveFieldSets[i].FieldValuePairs.Count;
+                for (var j = 0; j < liveFieldSets[i].FieldValuePairs.Count; j++)
+                {
+                    Logger.LogLine($"[{i}] name = {liveFieldSets[i].FieldValuePairs[j].Name}");
+                }
+            }
+
+            Logger.LogLine($"Total fields used = {sum}");
+
+            Logger.LogLine($"num_paths: {paths.Length}");
+
+            for (var i = 0; i < paths.Length; i++)
+            {
+                Logger.LogLine($"path[{i}].name = {paths[i].full_path_name()}");
+            }
+        }
+
+        public class Scene
+        {
+            //TODO:
+        }
+
+        public void ReconstructSceneRecursively(int parent, int level, ref Dictionary<int, int> pathToSpecLookup, ref Scene scene)
+        {
+            //TODO:
+        }
+
+        public void ReconstructScene()
+        {
+            Logger.LogLine($"reconstruct scene:");
+
+            var pathToSpecLookup = new Dictionary<int, int>();
+            for (var i = 0; i < specs.Length; i++)
+            {
+                pathToSpecLookup.Add(specs[i].PathIndex, i);
+            }
+
+            var scene = new Scene();
+            ReconstructSceneRecursively(0, 0, ref pathToSpecLookup, ref scene);
         }
 
         public void ReadUsdc(Stream stream)
@@ -1529,11 +1619,6 @@ namespace UsdzSharpie
                 if (!header.Equals(usdcHeader))
                 {
                     throw new Exception("Unrecognised header");
-                }
-
-                for (var i = 0; i < header.Length; i++)
-                {
-                    Logger.LogLine($"{(byte)header[i]}");
                 }
 
                 // Read version info
@@ -1574,6 +1659,8 @@ namespace UsdzSharpie
                 }
 
                 BuildLiveFieldSets(binaryReader);
+
+                ReconstructScene();
             }
         }
     }
