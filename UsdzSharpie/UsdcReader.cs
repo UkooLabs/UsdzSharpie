@@ -68,11 +68,11 @@ namespace UsdzSharpie
             Logger.LogLine($"toc offset = {tocOffset}");
 
             binaryReader.BaseStream.Position = (long)tocOffset;
-            var tocCount = binaryReader.ReadUInt64();
+            var sectionsCount = binaryReader.ReadUInt64();
 
-            Logger.LogLine($"toc sections = {tocCount}");
+            Logger.LogLine($"toc sections = {sectionsCount}");
 
-            for (var i = (ulong)0; i < tocCount; i++)
+            for (var i = (ulong)0; i < sectionsCount; i++)
             {
                 var section = new UsdcSection
                 {
